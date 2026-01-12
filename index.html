@@ -160,6 +160,11 @@
                             <div class="menu-text">目标设置</div>
                             <div class="menu-arrow"><i class="fas fa-chevron-right"></i></div>
                         </div>
+                        <div class="menu-item" id="open-ai-plan">
+                            <div class="menu-icon"><i class="fas fa-brain"></i></div>
+                            <div class="menu-text">AI 智能计划</div>
+                            <div class="menu-arrow"><i class="fas fa-chevron-right"></i></div>
+                        </div>
                         <div class="menu-item" id="open-ai-settings">
                             <div class="menu-icon"><i class="fas fa-robot"></i></div>
                             <div class="menu-text">AI 识别设置</div>
@@ -290,6 +295,157 @@
                     <p class="hint-text">如使用通义千问，请填写 qwen-vl-max</p>
                 </div>
                 <button class="primary-btn" id="save-ai-settings">保存配置</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 弹窗：AI 智能计划 - 表单页 (全屏滑片) -->
+    <div id="ai-plan-modal" class="modal slide-modal hidden">
+        <div class="modal-header">
+            <h3><i class="fas fa-brain"></i> AI 智能计划</h3>
+            <button class="close-modal"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-body">
+            <!-- 表单区域 -->
+            <div id="ai-plan-form-area" class="ai-plan-form">
+                <div class="results-section">
+                    <h4><i class="fas fa-user"></i> 基本信息</h4>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>性别</label>
+                            <select id="ai-gender">
+                                <option value="male">男</option>
+                                <option value="female">女</option>
+                            </select>
+                        </div>
+                        <div class="form-group small">
+                            <label>年龄</label>
+                            <input type="number" id="ai-age" placeholder="25">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>身高 (cm)</label>
+                            <input type="number" id="ai-height" placeholder="175">
+                        </div>
+                        <div class="form-group">
+                            <label>当前体重 (kg)</label>
+                            <input type="number" id="ai-current-weight" placeholder="70" step="0.1">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="results-section">
+                    <h4><i class="fas fa-running"></i> 活动水平</h4>
+                    <div class="form-group">
+                        <select id="ai-activity">
+                            <option value="sedentary">久坐 (几乎不运动)</option>
+                            <option value="light">轻度活动 (每周运动1-3次)</option>
+                            <option value="moderate">中度活动 (每周运动3-5次)</option>
+                            <option value="active">高度活动 (每周运动6-7次)</option>
+                            <option value="very_active">剧烈运动 (每日高强度训练)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="results-section">
+                    <h4><i class="fas fa-bullseye"></i> 减重目标</h4>
+                    <div class="form-group">
+                        <label>目标体重 (kg)</label>
+                        <input type="number" id="ai-target-weight" placeholder="65" step="0.1">
+                    </div>
+                </div>
+
+                <button class="primary-btn" id="start-ai-analysis">
+                    <i class="fas fa-magic"></i> 开始 AI 分析
+                </button>
+            </div>
+            
+            <!-- 加载状态 (在表单页内显示) -->
+            <div id="ai-plan-loading" class="hidden">
+                <div class="loading-spinner-center">
+                    <div class="spinner-icon">
+                        <i class="fas fa-spinner fa-spin"></i>
+                    </div>
+                    <p class="loading-title">AI 正在为您定制专属计划</p>
+                    <p class="loading-subtitle">请稍候，正在计算最佳方案...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 弹窗：AI 分析结果 (全屏滑片) -->
+    <div id="ai-result-modal" class="modal slide-modal hidden">
+        <div class="modal-header result-header-gradient">
+            <h3><i class="fas fa-sparkles"></i> 专属计划</h3>
+            <button class="close-modal"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-body">
+            <!-- 核心数据卡片 -->
+            <div class="result-hero-card">
+                <div class="hero-icon">
+                    <i class="fas fa-fire-alt"></i>
+                </div>
+                <div class="hero-content">
+                    <span class="hero-label">建议每日摄入</span>
+                    <div class="hero-value">
+                        <span id="ai-recommend-calories">--</span>
+                        <span class="hero-unit">千卡</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 减重速度调整 -->
+            <div class="result-card">
+                <div class="result-card-header">
+                    <i class="fas fa-sliders-h"></i>
+                    <span>减重速度调整</span>
+                </div>
+                <div class="result-card-body">
+                    <div class="speed-display">
+                        <span class="speed-label">每周减重</span>
+                        <span class="speed-value" id="weight-loss-rate-display">0.5 公斤</span>
+                    </div>
+                    <input type="range" id="weight-loss-slider" min="0" max="1" step="0.1" value="0.5" class="styled-slider">
+                    <div class="slider-labels">
+                        <span>维持体重</span>
+                        <span>快速减重</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 预计达成日期 -->
+            <div class="result-card date-card">
+                <div class="date-card-content">
+                    <div class="date-icon">
+                        <i class="fas fa-calendar-check"></i>
+                    </div>
+                    <div class="date-info">
+                        <span class="date-label">预计达成目标</span>
+                        <span class="date-value" id="ai-estimated-date">--</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AI 专属建议 -->
+            <div class="result-card advice-card">
+                <div class="result-card-header">
+                    <i class="fas fa-lightbulb"></i>
+                    <span>AI 专属建议</span>
+                </div>
+                <div class="result-card-body">
+                    <p class="advice-text" id="ai-advice-text">正在生成建议...</p>
+                </div>
+            </div>
+
+            <!-- 操作按钮 -->
+            <div class="result-actions">
+                <button class="secondary-btn" id="re-analyze-btn">
+                    <i class="fas fa-redo"></i> 重新分析
+                </button>
+                <button class="primary-btn" id="save-ai-plan">
+                    <i class="fas fa-check"></i> 应用计划
+                </button>
             </div>
         </div>
     </div>

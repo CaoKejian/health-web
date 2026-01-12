@@ -58,6 +58,31 @@ const openaiApiKeyInput = document.getElementById('openai-api-key');
 const openaiBaseUrlInput = document.getElementById('openai-base-url');
 const openaiModelInput = document.getElementById('openai-model');
 
+// AI Plan Elements
+const openAiPlanBtn = document.getElementById('open-ai-plan');
+const aiPlanModal = document.getElementById('ai-plan-modal');
+const aiResultModal = document.getElementById('ai-result-modal');
+const startAiAnalysisBtn = document.getElementById('start-ai-analysis');
+const saveAiPlanBtn = document.getElementById('save-ai-plan');
+const reAnalyzeBtn = document.getElementById('re-analyze-btn');
+const aiPlanFormArea = document.getElementById('ai-plan-form-area');
+const aiPlanLoading = document.getElementById('ai-plan-loading');
+
+// AI Plan Inputs
+const aiGenderInput = document.getElementById('ai-gender');
+const aiAgeInput = document.getElementById('ai-age');
+const aiHeightInput = document.getElementById('ai-height');
+const aiCurrentWeightInput = document.getElementById('ai-current-weight');
+const aiActivityInput = document.getElementById('ai-activity');
+const aiTargetWeightInput = document.getElementById('ai-target-weight');
+
+// AI Plan Results
+const weightLossSlider = document.getElementById('weight-loss-slider');
+const weightLossRateDisplay = document.getElementById('weight-loss-rate-display');
+const aiRecommendCalories = document.getElementById('ai-recommend-calories');
+const aiEstimatedDate = document.getElementById('ai-estimated-date');
+const aiAdviceText = document.getElementById('ai-advice-text');
+
 // AI Camera Elements
 const scanFoodBtn = document.getElementById('scan-food-btn');
 const foodImageInput = document.getElementById('food-image-input');
@@ -712,6 +737,48 @@ function setupEventListeners() {
         foodImageInput.addEventListener('change', handleImageUpload);
     }
     
+    // AI Plan
+    if (openAiPlanBtn) {
+        console.log('AI Plan button found:', openAiPlanBtn);
+        openAiPlanBtn.addEventListener('click', () => {
+            console.log('AI Plan clicked!');
+            // Reset form area visible, loading hidden
+            if (aiPlanFormArea) aiPlanFormArea.classList.remove('hidden');
+            if (aiPlanLoading) aiPlanLoading.classList.add('hidden');
+            
+            // Pre-fill current weight if available
+            const todayRecord = getCurrentRecord();
+            if (todayRecord.weight && aiCurrentWeightInput) {
+                aiCurrentWeightInput.value = todayRecord.weight;
+            }
+            
+            openModal(aiPlanModal);
+        });
+    } else {
+        console.error('AI Plan button not found!');
+    }
+    
+    if (startAiAnalysisBtn) {
+        startAiAnalysisBtn.addEventListener('click', startAiAnalysis);
+    }
+    
+    if (saveAiPlanBtn) {
+        saveAiPlanBtn.addEventListener('click', saveAiPlan);
+    }
+    
+    if (reAnalyzeBtn) {
+        reAnalyzeBtn.addEventListener('click', () => {
+            // Close result modal and reopen form modal
+            closeModal(aiResultModal);
+            if (aiPlanLoading) aiPlanLoading.classList.add('hidden');
+            openModal(aiPlanModal);
+        });
+    }
+    
+    if (weightLossSlider) {
+        weightLossSlider.addEventListener('input', updatePlanCalculations);
+    }
+    
     // Data Export
     if (exportDataProfileBtn) {
         exportDataProfileBtn.addEventListener('click', exportData);
@@ -784,6 +851,165 @@ function handleFileImport(event) {
         event.target.value = '';
     };
     reader.readAsText(file);
+}
+
+// AI Plan Functions
+let currentTDEE = 0;
+let currentWeightToLose = 0;
+
+async function startAiAnalysis() {
+    // Validate inputs
+    const gender = aiGenderInput ? aiGenderInput.value : '';
+    const age = aiAgeInput ? parseInt(aiAgeInput.value) : 0;
+    const height = aiHeightInput ? parseInt(aiHeightInput.value) : 0;
+    const currentWeight = aiCurrentWeightInput ? parseFloat(aiCurrentWeightInput.value) : 0;
+    const activity = aiActivityInput ? aiActivityInput.value : '';
+    const targetWeight = aiTargetWeightInput ? parseFloat(aiTargetWeightInput.value) : 0;
+    
+    if (!gender || !age || !height || !currentWeight || !activity || !targetWeight) {
+        alert('请填写所有信息');
+        return;
+    }
+    
+    if (targetWeight >= currentWeight) {
+        alert('目标体重需要小于当前体重');
+        return;
+    }
+    
+    // Check AI config
+    if (!appData.settings.aiConfig || !appData.settings.aiConfig.apiKey) {
+        alert('请先在"我的"页面配置 AI 识别设置');
+        return;
+    }
+    
+    // Show loading overlay (覆盖在表单上方)
+    if (aiPlanLoading) aiPlanLoading.classList.remove('hidden');
+    
+    try {
+        // Calculate TDEE using Mifflin-St Jeor equation
+        let bmr;
+        if (gender === 'male') {
+            bmr = 10 * currentWeight + 6.25 * height - 5 * age + 5;
+        } else {
+            bmr = 10 * currentWeight + 6.25 * height - 5 * age - 161;
+        }
+        
+        // Activity multiplier
+        const activityMultipliers = {
+            'sedentary': 1.2,
+            'light': 1.375,
+            'moderate': 1.55,
+            'active': 1.725,
+            'very_active': 1.9
+        };
+        
+        currentTDEE = Math.round(bmr * (activityMultipliers[activity] || 1.2));
+        currentWeightToLose = currentWeight - targetWeight;
+        
+        // Call AI for personalized advice
+        const config = appData.settings.aiConfig;
+        const activityNames = {
+            'sedentary': '久坐不动',
+            'light': '轻度活动',
+            'moderate': '中度活动',
+            'active': '高度活动',
+            'very_active': '剧烈活动'
+        };
+        
+        const prompt = `作为一名专业营养师，请根据以下用户信息提供简短的减重建议：
+- 性别：${gender === 'male' ? '男' : '女'}
+- 年龄：${age}岁
+- 身高：${height}cm
+- 当前体重：${currentWeight}kg
+- 目标体重：${targetWeight}kg
+- 活动水平：${activityNames[activity]}
+- 计算TDEE：${currentTDEE}千卡
+
+请用中文回复，控制在100字以内，给出最关键的饮食和运动建议。`;
+        
+        const response = await fetch(`${config.baseUrl}/chat/completions`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${config.apiKey}`
+            },
+            body: JSON.stringify({
+                model: config.model || 'gpt-4o',
+                messages: [{ role: 'user', content: prompt }],
+                max_tokens: 200
+            })
+        });
+        
+        let aiAdvice = '保持合理饮食，适量运动，循序渐进达成目标。';
+        
+        if (response.ok) {
+            const data = await response.json();
+            aiAdvice = data.choices[0].message.content;
+        }
+        
+        // Update UI
+        if (aiAdviceText) aiAdviceText.textContent = aiAdvice;
+        if (weightLossSlider) weightLossSlider.value = 0.5; // Default 0.5kg/week
+        
+        updatePlanCalculations();
+        
+        // Close form modal and show result modal
+        closeModal(aiPlanModal);
+        openModal(aiResultModal);
+        
+    } catch (error) {
+        console.error('AI Analysis Error:', error);
+        alert('分析失败：' + error.message);
+        if (aiPlanLoading) aiPlanLoading.classList.add('hidden');
+    }
+}
+
+function updatePlanCalculations() {
+    const weeklyLoss = weightLossSlider ? parseFloat(weightLossSlider.value) : 0.5;
+    
+    // Display current rate
+    if (weightLossRateDisplay) {
+        weightLossRateDisplay.textContent = `${weeklyLoss} 公斤`;
+    }
+    
+    // Calculate daily calorie deficit needed
+    // 1kg fat ≈ 7700 kcal
+    const dailyDeficit = Math.round((weeklyLoss * 7700) / 7);
+    const recommendedCalories = Math.max(1200, currentTDEE - dailyDeficit); // Minimum 1200
+    
+    if (aiRecommendCalories) {
+        aiRecommendCalories.textContent = recommendedCalories;
+    }
+    
+    // Calculate estimated date
+    if (currentWeightToLose > 0 && weeklyLoss > 0) {
+        const weeksNeeded = currentWeightToLose / weeklyLoss;
+        const daysNeeded = Math.ceil(weeksNeeded * 7);
+        
+        const targetDate = new Date();
+        targetDate.setDate(targetDate.getDate() + daysNeeded);
+        
+        const dateStr = `${targetDate.getFullYear()}年${targetDate.getMonth() + 1}月${targetDate.getDate()}日`;
+        
+        if (aiEstimatedDate) {
+            aiEstimatedDate.textContent = dateStr;
+        }
+    } else {
+        if (aiEstimatedDate) {
+            aiEstimatedDate.textContent = weeklyLoss === 0 ? '维持体重' : '-';
+        }
+    }
+}
+
+function saveAiPlan() {
+    const recommendedCalories = aiRecommendCalories ? parseInt(aiRecommendCalories.textContent) : 0;
+    
+    if (recommendedCalories > 0) {
+        appData.settings.targetCalories = recommendedCalories;
+        saveData();
+        closeModal(aiResultModal);
+        alert(`已将每日目标热量设置为 ${recommendedCalories} 千卡`);
+    }
 }
 
 // Start App
