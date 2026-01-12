@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>健康饮食记录</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Flatpickr CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/material_green.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- 页面内容区域 -->
+        <div class="content-area">
+            
+            <!-- 1. 记录页面 (默认显示) -->
+            <div id="page-record" class="page active">
+                <!-- 顶部日期栏 -->
+                <header class="header">
+                    <button id="prev-day" class="icon-btn"><i class="fas fa-chevron-left"></i></button>
+                    <div class="date-picker-wrapper">
+                        <label for="date-picker" class="date-display-box">
+                            <i class="far fa-calendar-alt"></i>
+                            <span id="date-display">今天</span>
+                        </label>
+                        <input type="text" id="date-picker" readonly>
+                    </div>
+                    <button id="next-day" class="icon-btn"><i class="fas fa-chevron-right"></i></button>
+                </header>
+
+                <!-- 热量概览 -->
+                <section class="dashboard card">
+                    <div class="calories-summary">
+                        <div class="main-stat">
+                            <span class="label">剩余可用 (千卡)</span>
+                            <span class="value" id="remaining-calories">0</span>
+                        </div>
+                        <div class="sub-stats">
+                            <div class="stat-item">
+                                <span class="label">目标</span>
+                                <span class="value" id="target-calories-display">0</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="label">摄入</span>
+                                <span class="value" id="intake-calories">0</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="label">运动</span>
+                                <span class="value" id="burned-calories">0</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 体重记录 -->
+                <section class="section card">
+                    <div class="section-header">
+                        <h3><i class="fas fa-weight"></i> 体重 (kg)</h3>
+                    </div>
+                    <div class="weight-input-container">
+                        <input type="number" id="weight-input" placeholder="输入今日体重" step="0.1">
+                    </div>
+                </section>
+
+                <!-- 饮水记录 -->
+                <section class="section card">
+                    <div class="section-header">
+                        <h3><i class="fas fa-tint"></i> 饮水 (ml)</h3>
+                        <span id="water-total">0 ml</span>
+                    </div>
+                    <div class="water-controls">
+                        <button class="water-btn" data-amount="250"><i class="fas fa-plus"></i> 250ml</button>
+                        <button class="water-btn" data-amount="500"><i class="fas fa-plus"></i> 500ml</button>
+                    </div>
+                    <div class="water-custom-controls">
+                        <input type="number" id="water-custom-input" placeholder="自定义 ml">
+                        <button class="water-btn-sm" id="add-custom-water"><i class="fas fa-plus"></i></button>
+                        <button class="water-btn-sm reset-water"><i class="fas fa-undo"></i></button>
+                    </div>
+                </section>
+
+                <!-- 饮食记录 -->
+                <section class="section card">
+                    <div class="section-header">
+                        <h3><i class="fas fa-utensils"></i> 饮食记录</h3>
+                        <button class="add-btn" id="add-meal-btn"><i class="fas fa-plus"></i> 记一笔</button>
+                    </div>
+                    <ul id="meal-list" class="record-list">
+                        <!-- 列表项由JS生成 -->
+                    </ul>
+                </section>
+
+                <!-- 运动记录 -->
+                <section class="section card">
+                    <div class="section-header">
+                        <h3><i class="fas fa-running"></i> 运动记录</h3>
+                        <button class="add-btn" id="add-exercise-btn"><i class="fas fa-plus"></i> 记一笔</button>
+                    </div>
+                    <ul id="exercise-list" class="record-list">
+                        <!-- 列表项由JS生成 -->
+                    </ul>
+                </section>
+            </div>
+
+            <!-- 2. 分析页面 -->
+            <div id="page-analysis" class="page">
+                <header class="header simple-header">
+                    <i class="fas fa-chart-pie"></i>
+                    <h2>数据分析</h2>
+                </header>
+                
+                <div class="chart-filters">
+                    <button class="filter-btn active" data-range="week">近一周</button>
+                    <button class="filter-btn" data-range="month">近一月</button>
+                    <button class="filter-btn" data-range="year">近一年</button>
+                </div>
+
+                <div class="analysis-content">
+                    <section class="card">
+                        <h3>体重变化趋势</h3>
+                        <div class="chart-container">
+                            <canvas id="weight-chart"></canvas>
+                        </div>
+                    </section>
+                    <section class="card">
+                        <h3>热量摄入 vs 消耗</h3>
+                        <div class="chart-container">
+                            <canvas id="calories-chart"></canvas>
+                        </div>
+                    </section>
+                    <section class="card">
+                        <h3>饮水量趋势</h3>
+                        <div class="chart-container">
+                            <canvas id="water-chart"></canvas>
+                        </div>
+                    </section>
+                </div>
+            </div>
+
+            <!-- 3. 我的页面 -->
+            <div id="page-profile" class="page">
+                <header class="header simple-header">
+                    <i class="fas fa-user-circle"></i>
+                    <h2>个人中心</h2>
+                </header>
+                <div class="profile-content">
+                    <section class="card profile-card">
+                        <div class="profile-header">
+                            <div class="avatar"><i class="fas fa-user"></i></div>
+                            <h3>健康生活家</h3>
+                        </div>
+                    </section>
+
+                    <section class="card menu-list">
+                        <div class="menu-item" id="open-settings-profile">
+                            <div class="menu-icon"><i class="fas fa-bullseye"></i></div>
+                            <div class="menu-text">目标设置</div>
+                            <div class="menu-arrow"><i class="fas fa-chevron-right"></i></div>
+                        </div>
+                        <div class="menu-item" id="open-ai-settings">
+                            <div class="menu-icon"><i class="fas fa-robot"></i></div>
+                            <div class="menu-text">AI 识别设置</div>
+                            <div class="menu-arrow"><i class="fas fa-chevron-right"></i></div>
+                        </div>
+                        <div class="menu-item" id="export-data-profile">
+                            <div class="menu-icon"><i class="fas fa-file-export"></i></div>
+                            <div class="menu-text">导出数据</div>
+                            <div class="menu-arrow"><i class="fas fa-chevron-right"></i></div>
+                        </div>
+                        <div class="menu-item" id="import-data-profile">
+                            <div class="menu-icon"><i class="fas fa-file-import"></i></div>
+                            <div class="menu-text">导入数据</div>
+                            <div class="menu-arrow"><i class="fas fa-chevron-right"></i></div>
+                        </div>
+                        <input type="file" id="import-file-input" accept=".json" style="display: none;">
+                    </section>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- 底部导航栏 -->
+        <nav class="bottom-nav">
+            <div class="nav-item" data-target="page-analysis">
+                <i class="fas fa-chart-line"></i>
+                <span>分析</span>
+            </div>
+            <div class="nav-item active" data-target="page-record">
+                <i class="fas fa-edit"></i>
+                <span>记录</span>
+            </div>
+            <div class="nav-item" data-target="page-profile">
+                <i class="fas fa-user"></i>
+                <span>我的</span>
+            </div>
+        </nav>
+    </div>
+
+    <!-- 弹窗：添加饮食 -->
+    <div id="meal-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>添加饮食</h3>
+                <button class="close-modal"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="ai-camera-section">
+                    <button class="ai-camera-btn" id="scan-food-btn">
+                        <i class="fas fa-camera"></i> 拍照识别热量
+                    </button>
+                    <input type="file" id="food-image-input" accept="image/*" style="display: none;">
+                    <div id="ai-loading" class="hidden">
+                        <i class="fas fa-spinner fa-spin"></i> 正在分析食物...
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>食物名称</label>
+                    <input type="text" id="meal-name" placeholder="例如：燕麦牛奶">
+                </div>
+                <div class="form-group">
+                    <label>热量 (千卡)</label>
+                    <input type="number" id="meal-calories" placeholder="0">
+                </div>
+                <button class="primary-btn" id="save-meal">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 弹窗：添加运动 -->
+    <div id="exercise-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>添加运动</h3>
+                <button class="close-modal"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>运动名称</label>
+                    <input type="text" id="exercise-name" placeholder="例如：慢跑30分钟">
+                </div>
+                <div class="form-group">
+                    <label>消耗热量 (千卡)</label>
+                    <input type="number" id="exercise-calories" placeholder="0">
+                </div>
+                <button class="primary-btn" id="save-exercise">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 弹窗：设置 (仅保留目标设置，数据管理移至"我的") -->
+    <div id="settings-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>设置</h3>
+                <button class="close-modal"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>每日目标热量 (千卡)</label>
+                    <input type="number" id="setting-target" placeholder="1200">
+                </div>
+                <button class="primary-btn" id="save-settings">保存设置</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 弹窗：AI 设置 -->
+    <div id="ai-settings-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>AI 识别设置</h3>
+                <button class="close-modal"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>OpenAI API Key</label>
+                    <input type="password" id="openai-api-key" placeholder="sk-...">
+                    <p class="hint-text">您的 Key 仅保存在本地浏览器中，用于调用 OpenAI 接口识别食物。</p>
+                </div>
+                <div class="form-group">
+                    <label>API Base URL (可选)</label>
+                    <input type="text" id="openai-base-url" placeholder="https://api.openai.com/v1">
+                </div>
+                <div class="form-group">
+                    <label>模型名称 (可选)</label>
+                    <input type="text" id="openai-model" placeholder="gpt-4o">
+                    <p class="hint-text">如使用通义千问，请填写 qwen-vl-max</p>
+                </div>
+                <button class="primary-btn" id="save-ai-settings">保存配置</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="overlay" class="hidden"></div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/zh.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
